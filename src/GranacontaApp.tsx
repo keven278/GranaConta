@@ -30,8 +30,8 @@ export default function GranacontaApp() {
 
         {activeScreen === "signup" && (
           <SignupScreen
-            onNavigateToLogin={() => setActiveScreen("login")}
-            onSignupSuccess={() => setActiveScreen("home")}
+           onNavigateToLogin={() => setActiveScreen("login")}
+           onSignupSuccess={() => setActiveScreen("login")}
           />
         )}
 

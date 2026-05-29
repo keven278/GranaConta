@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -26,12 +27,56 @@ export default function LoginScreen({
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
 
-  function handleLogin() {
-    console.log("Email:", email);
-    console.log("Senha:", senha);
+  async function handleLogin() {
+
+  try {
+    
+    const resposta = await fetch(
+  "http://10.0.2.2:3000/usuarios/login",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      senha,
+    }),
+  }
+  );
+   
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+
+      Alert.alert(
+        "Erro",
+        dados.mensagem || "Login inválido"
+      );
+
+      return;
+    }
+
+    Alert.alert(
+      "Sucesso",
+      `Bem-vindo ${dados.nome}`
+    );
 
     onLoginSuccess?.();
+
+  } catch (erro) {
+
+    Alert.alert(
+      "Erro",
+      "Não foi possível conectar ao servidor"
+    );
+
+    console.log(erro);
+
   }
+}
+
 
   return (
     <View style={styles.container}>

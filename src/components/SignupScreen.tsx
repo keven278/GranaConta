@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -28,14 +29,55 @@ export default function SignupScreen({
   const [senha, setSenha] = useState("");
   const [rendaMensal, setRendaMensal] = useState("");
 
-  function handleCadastro() {
-    console.log("Nome:", nome);
-    console.log("Email:", email);
-    console.log("Senha:", senha);
-    console.log("Renda mensal:", rendaMensal);
+  async function handleCadastro() {
+  try {
 
-    onSignupSuccess?.();
+    const resposta = await fetch(
+      "http://10.0.2.2:3000/usuarios",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nome,
+          email,
+          senha,
+          rendaMensal: Number(rendaMensal),
+        }),
+      }
+    );
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+      Alert.alert("Erro", dados.erro || "Erro ao cadastrar");
+      return;
+    }
+
+    Alert.alert(
+  "Sucesso",
+  "Usuário cadastrado com sucesso! Faça login para continuar.",
+  [
+    {
+      text: "OK",
+      onPress: () => onSignupSuccess?.()
+    }
+  ]
+);
+
+  } catch (erro) {
+
+    Alert.alert(
+      "Erro",
+      "Não foi possível conectar ao servidor"
+    );
+
+    console.log(erro);
   }
+}
+
+
 
   return (
     <View style={styles.container}>

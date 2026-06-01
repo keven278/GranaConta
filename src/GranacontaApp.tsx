@@ -34,7 +34,7 @@ export default function GranacontaApp() {
            onSignupSuccess={() => setActiveScreen("login")}
           />
         )}
-
+ 
         {activeScreen === "home" && <HomeScreen />}
 
         {activeScreen === "report" && <ReportScreen />}

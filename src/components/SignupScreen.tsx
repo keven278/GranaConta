@@ -28,6 +28,11 @@ export default function SignupScreen({
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [rendaMensal, setRendaMensal] = useState("");
+  function formatarMoeda(valor: string) {
+    const numero = valor.replace(/\D/g, "");
+    return (
+      Number(numero) / 100).toLocaleString("pt-BR", {minimumFractionDigits: 2,maximumFractionDigits: 2,});
+}
 
   async function handleCadastro() {
   try {
@@ -43,7 +48,7 @@ export default function SignupScreen({
           nome,
           email,
           senha,
-          rendaMensal: Number(rendaMensal),
+          rendaMensal: Number(rendaMensal.replace(/\./g, "").replace(",", ".")),
         }),
       }
     );
@@ -143,15 +148,12 @@ export default function SignupScreen({
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Renda Mensal</Text>
-
-              <TextInput
-                value={rendaMensal}
-                onChangeText={setRendaMensal}
-                placeholder="R$ 0,00"
-                placeholderTextColor="#9ca3af"
-                keyboardType="numeric"
-                style={styles.input}
-              />
+              <TextInput value={rendaMensal}
+              placeholder="R$ 0,00"
+               placeholderTextColor="#9ca3af"
+               keyboardType="numeric"
+               style={styles.input}
+               onChangeText={(texto) => {setRendaMensal(formatarMoeda(texto)); }}/>
             </View>
 
             <TouchableOpacity

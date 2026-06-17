@@ -1,15 +1,10 @@
 import {
-  Briefcase,
-  Coffee,
   DollarSign,
   Edit2,
-  Film,
-  Fuel,
   Plus,
-  ShoppingCart,
-  UserCircle2,
-  UtensilsCrossed,
+  UserCircle2
 } from "lucide-react-native";
+import { useEffect, useState } from "react";
 
 import {
   ScrollView,
@@ -20,15 +15,28 @@ import {
 } from "react-native";
 
 export default function HomeScreen() {
-  const historicoFinanceiro = [
-    { nome: "Salário", valor: 2000.0, tipo: "receita", icon: Briefcase },
-    { nome: "Café", valor: 8.5, tipo: "gasto", icon: Coffee },
-    { nome: "Supermercado", valor: 150.0, tipo: "gasto", icon: ShoppingCart },
-    { nome: "Freela", valor: 380.0, tipo: "receita", icon: DollarSign },
-    { nome: "Combustível", valor: 60.0, tipo: "gasto", icon: Fuel },
-    { nome: "Almoço", valor: 30.0, tipo: "gasto", icon: UtensilsCrossed },
-    { nome: "Cinema", valor: 45.0, tipo: "gasto", icon: Film },
-  ];
+  const [historicoFinanceiro, setHistoricoFinanceiro] = useState<any[]>([]);
+  const [saldo, setSaldo] = useState(0);
+
+  async function buscarTransacoes() {
+    try {
+      const response = await fetch(
+        "http://10.0.2.2:3000/transacoes"
+      );
+      const data = await response.json();
+      setHistoricoFinanceiro(data);
+      let saldoCalculado = 0;
+      data.forEach((item: any) => {
+        if(item.tipo === "receita"){
+          saldoCalculado += Number(item.valor);
+        }else{
+          saldoCalculado -= Number(item.valor);}});
+          setSaldo(saldoCalculado);
+        }catch (error) {
+          console.log(error);}}
+          useEffect(() => {
+            buscarTransacoes();
+          }, []);
 
   const gastosFixos = [
     { valor: 600.0, nome: "Aluguel" },
@@ -61,8 +69,7 @@ export default function HomeScreen() {
         <Text style={styles.saldoLabel}>Saldo Atual</Text>
 
         <View style={styles.saldoContainer}>
-          <Text style={styles.saldoValor}>R$ 1620,00</Text>
-
+          <Text style={styles.saldoValor}>R${saldo.toLocaleString("pt-BR", {minimumFractionDigits: 2,maximumFractionDigits: 2,})}</Text>
           <TouchableOpacity activeOpacity={0.7} style={styles.editButton}>
             <Edit2 size={17} color="rgba(255, 255, 255, 0.75)" />
           </TouchableOpacity>
@@ -77,30 +84,31 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>HISTÓRICO FINANCEIRO</Text>
 
         <View style={styles.historicoLista}>
-          {historicoFinanceiro.map((item, index) => {
-            const Icon = item.icon;
-            const isReceita = item.tipo === "receita";
-
-            return (
-              <View key={index} style={styles.historicoItem}>
-                <View style={styles.historicoInfo}>
-                  <Icon size={16} color="#6b7280" />
-                  <Text style={styles.historicoNome}>{item.nome}</Text>
-                </View>
-
-                <Text
-                  style={[
-                    styles.historicoValor,
-                    isReceita ? styles.valorReceita : styles.valorGasto,
-                  ]}
-                >
-                  {isReceita ? "+" : "-"}R$ {formatarValor(item.valor)}
+        {historicoFinanceiro.map((item, index) => {
+          const isReceita = item.tipo === "receita";
+          return (
+          <View key={index} style={styles.historicoItem}>
+            <View style={styles.historicoInfo}>
+              <DollarSign size={16} color="#6b7280" />
+              <Text style={styles.historicoNome}>
+                {item.descricao}
                 </Text>
-              </View>
-            );
+                </View>
+                <Text
+                style={[
+                  styles.historicoValor,
+                  isReceita
+                  ? styles.valorReceita
+                  : styles.valorGasto,
+                ]}
+                >{isReceita ? "+" : "-"}
+                R$
+                {formatarValor(Number(item.valor))}
+                </Text>
+                </View>
+                );
           })}
         </View>
-
         <TouchableOpacity activeOpacity={0.8} style={styles.botaoAdicionar}>
           <Plus size={18} color="#ffffff" />
           <Text style={styles.botaoAdicionarTexto}>

@@ -21,7 +21,15 @@ import {
   View,
 } from "react-native";
 
-export default function GoalsScreen() {
+interface GoalsScreenProps {
+  onOpenAddGoal?: () => void;
+  onOpenProfile?: () => void;
+}
+
+export default function GoalsScreen({
+  onOpenAddGoal,
+  onOpenProfile,
+}: GoalsScreenProps) {
   const [metas, setMetas] = useState([
     {
       nome: "Viagem internacional",
@@ -170,8 +178,11 @@ export default function GoalsScreen() {
             );
           })}
         </ScrollView>
-
-        <TouchableOpacity activeOpacity={0.8} style={styles.addGoalButton}>
+        
+        <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.addGoalButton}
+        onPress={onOpenAddGoal}>
           <Plus size={18} color="#22c55e" />
           <Text style={styles.addGoalText}>Adicionar Nova Meta</Text>
         </TouchableOpacity>

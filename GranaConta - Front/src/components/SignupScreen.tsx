@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +14,17 @@ import {
 
 import logoImg from "../imports/logo.png";
 
+function formatarMoeda(valor: string) {
+  const somenteNumeros = valor.replace(/\D/g, "");
+
+  const numero = Number(somenteNumeros) / 100;
+
+  return numero.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 interface SignupScreenProps {
   onNavigateToLogin?: () => void;
   onSignupSuccess?: () => void;
@@ -27,62 +37,17 @@ export default function SignupScreen({
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [rendaMensal, setRendaMensal] = useState("");
-  function formatarMoeda(valor: string) {
-    const numero = valor.replace(/\D/g, "");
-    return (
-      Number(numero) / 100).toLocaleString("pt-BR", {minimumFractionDigits: 2,maximumFractionDigits: 2,});
-}
+  const [rendaMensal, setRendaMensal] = useState("R$ 0,00");
 
-  async function handleCadastro() {
-  try {
+  function handleCadastro() {
+    console.log("Nome:", nome);
+    console.log("Email:", email);
+    console.log("Senha:", senha);
+    const renda = Number(rendaMensal.replace("R$", "").replace(/\./g, "").replace(",", ".").trim());
+    console.log("Renda mensal:", renda);
 
-    const resposta = await fetch(
-      "http://10.0.2.2:3000/usuarios",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nome,
-          email,
-          senha,
-          rendaMensal: Number(rendaMensal.replace(/\./g, "").replace(",", ".")),
-        }),
-      }
-    );
-
-    const dados = await resposta.json();
-
-    if (!resposta.ok) {
-      Alert.alert("Erro", dados.erro || "Erro ao cadastrar");
-      return;
-    }
-
-    Alert.alert(
-  "Sucesso",
-  "Usuário cadastrado com sucesso! Faça login para continuar.",
-  [
-    {
-      text: "OK",
-      onPress: () => onSignupSuccess?.()
-    }
-  ]
-);
-
-  } catch (erro) {
-
-    Alert.alert(
-      "Erro",
-      "Não foi possível conectar ao servidor"
-    );
-
-    console.log(erro);
+    onSignupSuccess?.();
   }
-}
-
-
 
   return (
     <View style={styles.container}>
@@ -148,12 +113,16 @@ export default function SignupScreen({
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Renda Mensal</Text>
-              <TextInput value={rendaMensal}
-              placeholder="R$ 0,00"
-               placeholderTextColor="#9ca3af"
-               keyboardType="numeric"
-               style={styles.input}
-               onChangeText={(texto) => {setRendaMensal(formatarMoeda(texto)); }}/>
+
+              <TextInput
+               value={rendaMensal}
+               onChangeText={(texto) => {
+                setRendaMensal(formatarMoeda(texto));}}
+                placeholder="R$ 0,00"
+                placeholderTextColor="#9ca3af"
+                keyboardType="numeric"
+                style={styles.input}
+                />
             </View>
 
             <TouchableOpacity

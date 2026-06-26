@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,66 +16,24 @@ import logoImg from "../imports/logo.png";
 
 interface LoginScreenProps {
   onNavigateToSignup?: () => void;
+  onNavigateToForgotPassword?: () => void;
   onLoginSuccess?: () => void;
 }
 
 export default function LoginScreen({
   onNavigateToSignup,
+  onNavigateToForgotPassword,
   onLoginSuccess,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
 
-  async function handleLogin() {
-
-  try {
-    
-    const resposta = await fetch(
-  "http://10.0.2.2:3000/usuarios/login",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      senha,
-    }),
-  }
-  );
-   
-
-    const dados = await resposta.json();
-
-    if (!resposta.ok) {
-
-      Alert.alert(
-        "Erro",
-        dados.mensagem || "Login inválido"
-      );
-
-      return;
-    }
-
-    Alert.alert(
-      "Sucesso",
-      `Bem-vindo ${dados.nome}`
-    );
+  function handleLogin() {
+    console.log("Email:", email);
+    console.log("Senha:", senha);
 
     onLoginSuccess?.();
-
-  } catch (erro) {
-
-    Alert.alert(
-      "Erro",
-      "Não foi possível conectar ao servidor"
-    );
-
-    console.log(erro);
-
   }
-}
-
 
   return (
     <View style={styles.container}>
@@ -133,6 +90,13 @@ export default function LoginScreen({
               onPress={handleLogin}
             >
               <Text style={styles.loginButtonText}>ENTRAR</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onNavigateToForgotPassword}
+            style={{ marginTop: 12, alignItems: "center" }}>
+              <Text style={{ color: "#2563eb", fontWeight: "600" }}>Esqueceu sua senha?</Text>
             </TouchableOpacity>
 
             <View style={styles.signupArea}>

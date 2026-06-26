@@ -1,10 +1,11 @@
 import { BarChart3, Home, Target } from "lucide-react-native";
-
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+type NavigationScreen = "home" | "report" | "goals";
+
 interface BottomNavigationProps {
-  activeScreen: "home" | "report" | "goals";
-  onNavigate: (screen: "home" | "report" | "goals") => void;
+  activeScreen: NavigationScreen;
+  onNavigate: (screen: NavigationScreen) => void;
 }
 
 export default function BottomNavigation({
@@ -12,9 +13,21 @@ export default function BottomNavigation({
   onNavigate,
 }: BottomNavigationProps) {
   const navItems = [
-    { id: "home" as const, icon: Home, label: "Início" },
-    { id: "report" as const, icon: BarChart3, label: "Relatório" },
-    { id: "goals" as const, icon: Target, label: "Metas" },
+    {
+      id: "home" as const,
+      icon: Home,
+      label: "Início",
+    },
+    {
+      id: "report" as const,
+      icon: BarChart3,
+      label: "Relatório",
+    },
+    {
+      id: "goals" as const,
+      icon: Target,
+      label: "Metas",
+    },
   ];
 
   return (
@@ -22,6 +35,7 @@ export default function BottomNavigation({
       <View style={styles.navContent}>
         {navItems.map((item) => {
           const Icon = item.icon;
+
           const isActive = activeScreen === item.id;
 
           return (
@@ -37,7 +51,7 @@ export default function BottomNavigation({
               <Icon
                 size={22}
                 strokeWidth={isActive ? 2.5 : 2}
-                color={isActive ? "#4ade80" : "rgba(255, 255, 255, 0.65)"}
+                color={isActive ? "#4ade80" : "rgba(255,255,255,0.65)"}
               />
 
               <Text
@@ -84,7 +98,7 @@ const styles = StyleSheet.create({
   },
 
   navButtonActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "rgba(255,255,255,0.10)",
   },
 
   navButtonInactive: {
@@ -101,6 +115,6 @@ const styles = StyleSheet.create({
   },
 
   navLabelInactive: {
-    color: "rgba(255, 255, 255, 0.65)",
+    color: "rgba(255,255,255,0.65)",
   },
 });

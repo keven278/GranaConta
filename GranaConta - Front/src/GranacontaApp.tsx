@@ -1,14 +1,30 @@
 import { useState } from "react";
 import { SafeAreaView, StyleSheet, View } from "react-native";
-
 import BottomNavigation from "./components/BottomNavigation";
+import LoginScreen from "./components/LoginScreen";
+import SignupScreen from "./components/SignupScreen";
 import GoalsScreen from "./components/GoalsScreen";
 import HomeScreen from "./components/HomeScreen";
-import LoginScreen from "./components/LoginScreen";
 import ReportScreen from "./components/ReportScreen";
-import SignupScreen from "./components/SignupScreen";
+import AddFixedExpenseScreen from "./components/AddFixedExpenseScreen";
+import AddGoalScreen from "./components/AddGoalScreen";
+import AddTransactionScreen from "./components/AddTransactionScreen";
+console.log(AddTransactionScreen);
 
-export type Screen = "login" | "signup" | "home" | "report" | "goals";
+import ForgotPasswordScreen from "./components/ForgotPasswordScreen";
+import ProfileScreen from "./components/ProfileScreen";
+
+export type Screen =
+  | "login"
+  | "signup"
+  | "forgotPassword"
+  | "home"
+  | "report"
+  | "goals"
+  | "addTransaction"
+  | "addFixedExpense"
+  | "addGoal"
+  | "profile";
 
 export default function GranacontaApp() {
   const [activeScreen, setActiveScreen] = useState<Screen>("login");
@@ -24,27 +40,59 @@ export default function GranacontaApp() {
         {activeScreen === "login" && (
           <LoginScreen
             onNavigateToSignup={() => setActiveScreen("signup")}
+            onNavigateToForgotPassword={() => setActiveScreen("forgotPassword")}
             onLoginSuccess={() => setActiveScreen("home")}
           />
         )}
 
         {activeScreen === "signup" && (
           <SignupScreen
-           onNavigateToLogin={() => setActiveScreen("login")}
-           onSignupSuccess={() => setActiveScreen("login")}
+            onNavigateToLogin={() => setActiveScreen("login")}
+            onSignupSuccess={() => setActiveScreen("home")}
           />
         )}
- 
-        {activeScreen === "home" && <HomeScreen />}
+
+        {activeScreen === "forgotPassword" && (
+          <ForgotPasswordScreen onBack={() => setActiveScreen("login")} />
+        )}
+
+        {activeScreen === "home" && (
+          <HomeScreen
+            onOpenAddTransaction={() => setActiveScreen("addTransaction")}
+            onOpenAddFixedExpense={() => setActiveScreen("addFixedExpense")}
+            onOpenProfile={() => setActiveScreen("profile")}
+          />
+        )}
 
         {activeScreen === "report" && <ReportScreen />}
 
-        {activeScreen === "goals" && <GoalsScreen />}
+        {activeScreen === "goals" && (
+          <GoalsScreen
+            onOpenAddGoal={() => setActiveScreen("addGoal")}
+            onOpenProfile={() => setActiveScreen("profile")}
+          />
+        )}
+
+        {activeScreen === "addTransaction" && (
+          <AddTransactionScreen onBack={() => setActiveScreen("home")} />
+        )}
+
+        {activeScreen === "addFixedExpense" && (
+          <AddFixedExpenseScreen onBack={() => setActiveScreen("home")} />
+        )}
+
+        {activeScreen === "addGoal" && (
+          <AddGoalScreen onBack={() => setActiveScreen("goals")} />
+        )}
+
+        {activeScreen === "profile" && (
+          <ProfileScreen onBack={() => setActiveScreen("home")} />
+        )}
 
         {showBottomNavigation && (
           <BottomNavigation
             activeScreen={activeScreen}
-            onNavigate={setActiveScreen}
+            onNavigate={(screen) => setActiveScreen(screen)}
           />
         )}
       </View>

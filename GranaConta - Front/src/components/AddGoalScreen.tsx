@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
-} from 'react-native';
+} from "react-native";
 
 interface AddGoalScreenProps {
   onBack: () => void;
@@ -15,22 +18,63 @@ interface AddGoalScreenProps {
 export default function AddGoalScreen({
   onBack,
 }: AddGoalScreenProps) {
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [nome, setNome] = useState("");
+  const [valor, setValor] = useState("");
+  const [guardado] = useState("0,00");
 
-  const categories = [
-    'Viagem',
-    'Carro',
-    'Casa',
-    'Tecnologia',
-    'Educação',
-    'Negócio',
-    'Saúde',
-    'Esporte',
-    'Família',
-    'Férias',
-    'Presente',
-    'Outro',
-  ];
+  async function criarMeta() {
+  try {
+    if (!nome.trim()) {
+      Alert.alert("Erro", "Informe o nome da meta.");
+      return;
+    }
+
+    if (!valor.trim()) {
+      Alert.alert("Erro", "Informe o valor da meta.");
+      return;
+    }
+
+    const token = await AsyncStorage.getItem("token");
+    const valorFormatado = valor.replace(".", ",");
+
+    await api.post(
+       "/metas",
+  {
+    nome,
+    valor: valorFormatado,
+    guardado,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+    Alert.alert(
+      "Sucesso",
+      "Meta criada com sucesso!",
+      [
+        {
+          text: "OK",
+        onPress: () => {
+        setNome("");
+        setValor("");
+        onBack();
+      },
+        },
+      ]
+    );
+  } catch (error: any) {
+    console.log(error);
+
+    Alert.alert(
+      "Erro",
+      error.response?.data?.erro ??
+        "Erro ao criar a meta."
+    );
+  }
+}
 
   return (
     <View style={styles.container}>
@@ -55,83 +99,35 @@ export default function AddGoalScreen({
             VALOR DA META
           </Text>
 
-          <Text style={styles.valueText}>
-            R$ 0,00
-          </Text>
+          <Text style={styles.valueText}>{valor.length > 0 ? `R$ ${valor}` : "R$ 0,00"}</Text>
+          
         </View>
 
         <Text style={styles.label}>Nome da meta</Text>
 
         <TextInput
+         value={nome}
+         onChangeText={setNome}
           placeholder="Ex: Viagem para Europa"
           placeholderTextColor="#9CA3AF"
           style={styles.input}
-        />
-
-        <Text style={styles.label}>Categoria</Text>
-
-        <View style={styles.categoryContainer}>
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.categoryCard,
-                selectedCategory === category &&
-                  styles.selectedCard,
-              ]}
-              onPress={() =>
-                setSelectedCategory(category)
-              }
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  selectedCategory === category &&
-                    styles.selectedText,
-                ]}
-              >
-                {category}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          />
+          <Text style={styles.label}>Valor da meta</Text>
+          <TextInput
+          value={valor}
+           onChangeText={setValor}
+            keyboardType="numeric"
+            placeholder="5000,00"
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+            />
+            
+        <View style={styles.infoBox}>
+          <Text style={styles.infoTitle}> Sobre as metas</Text>
+          <Text style={styles.infoText}> Você poderá adicionar ou retirar valores depois para acompanhar o progresso da meta.</Text>
         </View>
 
-        <Text style={styles.label}>
-          Prazo (opcional)
-        </Text>
-
-        <TextInput
-          placeholder="__/__/____"
-          placeholderTextColor="#9CA3AF"
-          style={styles.input}
-        />
-
-        <Text style={styles.label}>
-          Valor inicial (opcional)
-        </Text>
-
-        <TextInput
-          placeholder="R$ 0,00"
-          keyboardType="numeric"
-          placeholderTextColor="#9CA3AF"
-          style={styles.input}
-        />
-
-        <Text style={styles.label}>
-          Descrição (opcional)
-        </Text>
-
-        <TextInput
-          placeholder="Detalhes da meta..."
-          placeholderTextColor="#9CA3AF"
-          style={[
-            styles.input,
-            styles.descriptionInput,
-          ]}
-          multiline
-        />
-
-        <TouchableOpacity style={styles.saveButton}>
+        <TouchableOpacity style={styles.saveButton} onPress={criarMeta}>
           <Text style={styles.saveButtonText}>
             CRIAR META
           </Text>
@@ -214,44 +210,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  descriptionInput: {
-    height: 110,
-    paddingTop: 15,
-    textAlignVertical: 'top',
-  },
-
-  categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-
-  categoryCard: {
-    width: '31%',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginBottom: 10,
-    elevation: 2,
-  },
-
-  categoryText: {
-    fontSize: 12,
-    color: '#4B5563',
-    textAlign: 'center',
-  },
-
-  selectedCard: {
-    borderWidth: 2,
-    borderColor: PRIMARY_GREEN,
-  },
-
-  selectedText: {
-    color: PRIMARY_GREEN,
-    fontWeight: '700',
-  },
-
   saveButton: {
     backgroundColor: PRIMARY_GREEN,
     height: 55,
@@ -267,4 +225,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  infoBox:{
+    backgroundColor:"#EAF7FF",
+    borderRadius:14,
+    padding:18,
+    marginTop:15,
+    marginBottom:20,
+},
+
+infoTitle:{
+    fontSize:16,
+    fontWeight:"700",
+    color:"#1E3A5F",
+    marginBottom:8,
+},
+
+infoText:{
+    color:"#4B5563",
+    fontSize:14,
+    lineHeight:22,
+},
 });

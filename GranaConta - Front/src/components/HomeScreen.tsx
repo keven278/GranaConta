@@ -1,3 +1,8 @@
+import { useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
+import EditFixedExpenseModal from "./EditFixedExpenseModal";
+import ConfirmDeleteFixedExpenseModal from "./ConfirmDeleteFixedExpenseModal";
 import {
   Briefcase,
   Coffee,
@@ -10,50 +15,111 @@ import {
   UserCircle2,
   UtensilsCrossed,
 } from "lucide-react-native";
-
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useState } from "react";
+import EditTransactionModal from "./EditTransactionModal";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
+
+  const iconMap: Record<string, any> = {
+  Alimentação: UtensilsCrossed,
+  Café: Coffee,
+  Combustível: Fuel,
+  Compras: ShoppingCart,
+  Lazer: Film,
+  Trabalho: Briefcase,
+  Receita: DollarSign,
+};
 
 interface HomeScreenProps {
+  refresh: number;
   onOpenAddTransaction: () => void;
   onOpenAddFixedExpense: () => void;
   onOpenProfile: () => void;
 }
 
 export default function HomeScreen({
+  refresh,
   onOpenAddTransaction,
   onOpenAddFixedExpense,
   onOpenProfile,
 }: HomeScreenProps) {
-  const historicoFinanceiro = [
-    { nome: "Salário", valor: 2000, tipo: "receita", icon: Briefcase },
-    { nome: "Café", valor: 8.5, tipo: "gasto", icon: Coffee },
-    { nome: "Supermercado", valor: 150, tipo: "gasto", icon: ShoppingCart },
-    { nome: "Freela", valor: 380, tipo: "receita", icon: DollarSign },
-    { nome: "Combustível", valor: 60, tipo: "gasto", icon: Fuel },
-    { nome: "Almoço", valor: 30, tipo: "gasto", icon: UtensilsCrossed },
-    { nome: "Cinema", valor: 45, tipo: "gasto", icon: Film },
-  ];
-
-  const gastosFixos = [
-    { valor: 600, nome: "Aluguel" },
-    { valor: 120, nome: "Luz" },
-    { valor: 80, nome: "Água" },
-    { valor: 90, nome: "Internet" },
-    { valor: 60, nome: "Celular" },
-    { valor: 50, nome: "Academia" },
-    { valor: 40, nome: "Streaming" },
-    { valor: 35, nome: "Transporte" },
-  ];
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [historicoFinanceiro, setHistoricoFinanceiro] = useState<any[]>([]);
+  const [saldo, setSaldo] = useState(0);
+  const [gastosFixos, setGastosFixos] = useState<any[]>([]);
+  const [showEditFixedModal, setShowEditFixedModal] = useState(false);
+  const [showDeleteFixedModal, setShowDeleteFixedModal] = useState(false);
+  const [selectedFixedExpense, setSelectedFixedExpense] = useState<any>(null);
 
   function formatarValor(valor: number) {
     return valor.toFixed(2).replace(".", ",");
   }
+  async function carregarTransacoes() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    if (!token) {
+      Alert.alert("Sessão expirada", "Faça login novamente.");
+      return;
+    }
+
+    const response = await api.get("/transacoes", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log(response.data);
+    setHistoricoFinanceiro(response.data.transações);
+    const saldoCalculado = response.data.transações.reduce(
+      (total: number, transacao: any) => {
+        const valor = parseFloat(transacao.valor.replace(",", "."));
+        return total + valor;
+      },0
+    );
+    setSaldo(saldoCalculado);
+
+  } catch (error: any) {
+  console.error(error);
+  Alert.alert(
+    "Erro",
+    error.response?.data?.erro ??
+      "Erro ao carregar as transações."
+  );
+}
+}
+async function carregarGastosFixos() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await api.get("/transacoes/fixas", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setGastosFixos(response.data.fixas);
+
+  } catch (error) {
+    console.log(error);
+    Alert.alert(
+      "Erro",
+      "Não foi possível carregar os gastos fixos."
+    );
+  }
+}
+useEffect(() => {
+  carregarTransacoes();
+  carregarGastosFixos();
+}, [refresh]);
 
   return (
     <View style={styles.container}>
@@ -71,8 +137,7 @@ export default function HomeScreen({
         <Text style={styles.saldoLabel}>Saldo Atual</Text>
 
         <View style={styles.saldoContainer}>
-          <Text style={styles.saldoValor}>R$ 1620,00</Text>
-
+          <Text style={styles.saldoValor}>{saldo < 0 ? "-R$ " : "R$ "}{formatarValor(Math.abs(saldo))}</Text>
           <TouchableOpacity activeOpacity={0.7} style={styles.editButton}>
             <Edit2 size={17} color="rgba(255,255,255,0.75)" />
           </TouchableOpacity>
@@ -88,28 +153,35 @@ export default function HomeScreen({
 
         <View style={styles.historicoLista}>
           {historicoFinanceiro.map((item, index) => {
-            const Icon = item.icon;
-            const isReceita = item.tipo === "receita";
+            const Icon = iconMap[item.categoria] || DollarSign;
+            const valor = parseFloat(item.valor.replace(",", "."));
+            const isReceita = valor >= 0;
+  return (
+    <TouchableOpacity
+      key={item.id}
+      activeOpacity={0.8}
+      style={styles.historicoItem}
+      onPress={() => {
+        setSelectedTransaction(item);
+        setShowEditModal(true);
+      }}
+    >
+      <View style={styles.historicoInfo}>
+        <Icon size={22} color="#6b7280" />
+        <Text style={styles.historicoNome}>{item.nome}</Text>
+      </View>
 
-            return (
-              <View key={index} style={styles.historicoItem}>
-                <View style={styles.historicoInfo}>
-                  <Icon size={16} color="#6b7280" />
-
-                  <Text style={styles.historicoNome}>{item.nome}</Text>
-                </View>
-
-                <Text
-                  style={[
-                    styles.historicoValor,
-                    isReceita ? styles.valorReceita : styles.valorGasto,
-                  ]}
-                >
-                  {isReceita ? "+" : "-"}R$ {formatarValor(item.valor)}
-                </Text>
-              </View>
-            );
-          })}
+      <Text
+        style={[
+          styles.historicoValor,
+          isReceita ? styles.valorReceita : styles.valorGasto,
+        ]}
+      >
+        {isReceita ? "+" : "-"}R$ {formatarValor(Math.abs(valor))}
+      </Text>
+    </TouchableOpacity>
+  );
+})}
         </View>
 
         <TouchableOpacity
@@ -127,13 +199,20 @@ export default function HomeScreen({
         <Text style={styles.sectionTitle}>GASTOS FIXOS</Text>
 
         <View style={styles.gastosFixosGrid}>
-          {gastosFixos.map((gasto, index) => (
-            <View key={index} style={styles.gastoFixoCard}>
-              <Text style={styles.gastoFixoValor}>R$ {gasto.valor}</Text>
-
-              <Text style={styles.gastoFixoNome}>{gasto.nome}</Text>
-            </View>
-          ))}
+          {gastosFixos.map((gasto) => (
+            <TouchableOpacity
+            key={gasto.id}
+            style={styles.gastoFixoCard}
+            activeOpacity={0.8}
+            onPress={() => {
+              setSelectedFixedExpense(gasto);
+              setShowEditFixedModal(true);
+            }}
+            >
+          <Text style={styles.gastoFixoValor}>R$ {gasto.valor}</Text>
+         <Text style={styles.gastoFixoNome}>{gasto.nome}</Text>
+  </TouchableOpacity>
+))}
         </View>
 
         <TouchableOpacity
@@ -148,6 +227,84 @@ export default function HomeScreen({
           </Text>
         </TouchableOpacity>
       </ScrollView>
+<EditTransactionModal
+  visible={showEditModal}
+  transaction={selectedTransaction}
+  onClose={() => setShowEditModal(false)}
+  onDelete={() => setShowDeleteModal(true)}
+  onSave={() => {
+    carregarTransacoes();
+  }}
+/>
+<ConfirmDeleteModal
+  visible={showDeleteModal}
+  onClose={() => setShowDeleteModal(false)}
+  onDelete={async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      await api.delete(
+        `/transacoes/${selectedTransaction.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setShowDeleteModal(false);
+      setShowEditModal(false);
+
+      carregarTransacoes();
+
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Erro", "Não foi possível excluir a transação.");
+    }
+  }}
+/>
+<EditFixedExpenseModal
+  visible={showEditFixedModal}
+  expense={selectedFixedExpense}
+  onClose={() => setShowEditFixedModal(false)}
+  onDelete={() => setShowDeleteFixedModal(true)}
+  onSave={() => {
+    carregarGastosFixos();
+    setShowEditFixedModal(false);
+  }}
+/>
+
+<ConfirmDeleteFixedExpenseModal
+  visible={showDeleteFixedModal}
+  expense={selectedFixedExpense}
+  onClose={() => setShowDeleteFixedModal(false)}
+  onDelete={async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      await api.delete(
+        `/transacoes/fixa/${selectedFixedExpense.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setShowDeleteFixedModal(false);
+      setShowEditFixedModal(false);
+
+      carregarGastosFixos();
+
+    } catch (error) {
+      console.log(error);
+      Alert.alert(
+        "Erro",
+        "Não foi possível excluir o gasto fixo."
+      );
+    }
+  }}
+/>
     </View>
   );
 }
@@ -325,4 +482,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginLeft: 6,
   },
+  historicoRight: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+menuButton: {
+  marginLeft: 10,
+  padding: 2,
+},
 });

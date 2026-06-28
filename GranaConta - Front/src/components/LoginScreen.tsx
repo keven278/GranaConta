@@ -1,5 +1,8 @@
 import { useState } from "react";
-
+import PremiumModal from "./PremiumModal";
+import { Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
 import {
   Image,
   KeyboardAvoidingView,
@@ -11,6 +14,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import {
+  Crown,
+  Star,
+  X,
+  Check,
+  FileText,
+  BarChart2,
+} from "lucide-react-native";
 
 import logoImg from "../imports/logo.png";
 
@@ -27,13 +39,47 @@ export default function LoginScreen({
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [showPremium, setShowPremium] = useState(false);
 
-  function handleLogin() {
-    console.log("Email:", email);
-    console.log("Senha:", senha);
-
-    onLoginSuccess?.();
+async function handleLogin() {
+  if (!email || !senha) {
+    Alert.alert("Erro", "Preencha email e senha.");
+    return;
   }
+
+  try {
+    const response = await api.post("/usuarios/login", {
+      email,
+      senha,
+    });
+    const token = response.data.token;
+    await AsyncStorage.setItem("token", token);
+const usuario = await api.get("/usuario", {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+console.log(usuario.data);
+await AsyncStorage.setItem(
+  "usuarioId",
+  usuario.data.id.toString()
+);
+console.log("Token salvo:", token);
+Alert.alert("Sucesso", "Login realizado!");
+onLoginSuccess?.();
+
+  } catch (error: any) {
+    if (error.response) {
+      Alert.alert("Erro", error.response.data.erro);
+    } else {
+      Alert.alert(
+        "Erro",
+        "Não foi possível conectar ao servidor."
+      );
+    }
+    console.log(error);
+  }
+}
 
   return (
     <View style={styles.container}>
@@ -108,11 +154,39 @@ export default function LoginScreen({
               >
                 <Text style={styles.signupLink}>Cadastre-se</Text>
               </TouchableOpacity>
+              
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+            <TouchableOpacity
+            activeOpacity={0.9}
+            style={styles.premiumBanner}
+            onPress={() => setShowPremium(true)}>
+              <View style={styles.premiumContent}>
+                <View style={styles.crownContainer}>
+                  <Crown color="#FFD54F" size={24} />
+                  </View><View style={{ flex: 1 }}>
+                    <View
+                     style={{flexDirection: "row",alignItems: "center",}}
+                     >
+                      <Text style={styles.premiumTitle}>GRANACONTA PREMIUM</Text>
+                      <Star size={12}color="#FFD54F"fill="#FFD54F"style={{ marginLeft: 5 }}/>
+                      </View>
+                      <Text style={styles.premiumSubtitle}>Relatórios em CSV, gráficos avançados e muito mais.</Text>
+                      <Text style={styles.premiumPrice}>A partir de R$ 9,90/mês</Text>
+                      </View>
+                      <View style={styles.assinarButton}><Text style={styles.assinarText}>ASSINAR</Text>
+                      </View>
+                      </View>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView> 
+              </KeyboardAvoidingView>
+              <PremiumModal
+              visible={showPremium}
+              onClose={() => setShowPremium(false)}
+              onSubscribe={() => {
+                console.log("Usuário assinou o Premium");
+                setShowPremium(false);}}/>
+           </View>
   );
 }
 
@@ -242,4 +316,63 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  premiumBanner: {
+  marginTop: 20,
+  borderRadius: 18,
+  overflow: "hidden",
+  backgroundColor: "#2E4F87",
+  elevation: 5,
+},
+
+premiumContent: {
+  flexDirection: "row",
+  alignItems: "center",
+  padding: 16,
+},
+
+crownContainer: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(255,204,0,0.15)",
+  borderWidth: 1,
+  borderColor: "#FFD54F",
+  marginRight: 12,
+},
+
+premiumTitle: {
+  color: "#FFD54F",
+  fontWeight: "800",
+  fontSize: 14,
+},
+
+premiumSubtitle: {
+  color: "#FFF",
+  fontSize: 11,
+  marginTop: 2,
+},
+
+premiumPrice: {
+  color: "#FFD54F",
+  fontSize: 11,
+  marginTop: 5,
+  fontWeight: "700",
+},
+
+assinarButton: {
+  backgroundColor: "#FFC107",
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 12,
+  marginLeft: 10,
+},
+
+assinarText: {
+  color: "#1E3A5F",
+  fontWeight: "800",
+  fontSize: 12,
+},
 });
+

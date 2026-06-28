@@ -9,6 +9,8 @@ import ReportScreen from "./components/ReportScreen";
 import AddFixedExpenseScreen from "./components/AddFixedExpenseScreen";
 import AddGoalScreen from "./components/AddGoalScreen";
 import AddTransactionScreen from "./components/AddTransactionScreen";
+import AdminPremiumScreen from "./components/AdminPremiumScreen";
+
 console.log(AddTransactionScreen);
 
 import ForgotPasswordScreen from "./components/ForgotPasswordScreen";
@@ -24,10 +26,12 @@ export type Screen =
   | "addTransaction"
   | "addFixedExpense"
   | "addGoal"
-  | "profile";
+  | "profile"
+  | "adminPremium";
 
 export default function GranacontaApp() {
   const [activeScreen, setActiveScreen] = useState<Screen>("login");
+  const [homeRefresh, setHomeRefresh] = useState(0);
 
   const showBottomNavigation =
     activeScreen === "home" ||
@@ -58,9 +62,10 @@ export default function GranacontaApp() {
 
         {activeScreen === "home" && (
           <HomeScreen
-            onOpenAddTransaction={() => setActiveScreen("addTransaction")}
-            onOpenAddFixedExpense={() => setActiveScreen("addFixedExpense")}
-            onOpenProfile={() => setActiveScreen("profile")}
+          refresh={homeRefresh}
+          onOpenAddTransaction={() => setActiveScreen("addTransaction")}
+          onOpenAddFixedExpense={() => setActiveScreen("addFixedExpense")}
+          onOpenProfile={() => setActiveScreen("profile")}
           />
         )}
 
@@ -74,7 +79,7 @@ export default function GranacontaApp() {
         )}
 
         {activeScreen === "addTransaction" && (
-          <AddTransactionScreen onBack={() => setActiveScreen("home")} />
+          <AddTransactionScreen onBack={() => {setHomeRefresh((prev) => prev + 1);setActiveScreen("home");}}/>
         )}
 
         {activeScreen === "addFixedExpense" && (
@@ -86,7 +91,15 @@ export default function GranacontaApp() {
         )}
 
         {activeScreen === "profile" && (
-          <ProfileScreen onBack={() => setActiveScreen("home")} />
+          <ProfileScreen
+          onBack={() => setActiveScreen("home")}
+          onLogout={() => setActiveScreen("login")}
+          onOpenAdmin={() => setActiveScreen("adminPremium")}
+          />
+        )}
+
+        {activeScreen === "adminPremium" && (
+          <AdminPremiumScreen onBack={() => setActiveScreen("profile")}/>
         )}
 
         {showBottomNavigation && (

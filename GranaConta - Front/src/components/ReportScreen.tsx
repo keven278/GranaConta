@@ -1,98 +1,226 @@
-import { UserCircle2 } from "lucide-react-native";
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
-import { LineChart, PieChart } from "react-native-chart-kit";
-
+import { useState } from "react";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import { useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
+import { Alert } from "react-native";
+import {
+  UserCircle2,
+  Crown,
+  FileDown,
+} from "lucide-react-native";
+import { Dimensions, ScrollView, StyleSheet, Text, View,TouchableOpacity, } from "react-native";
+import { PieChart, LineChart } from "react-native-chart-kit";
+import PremiumModal from "./PremiumModal";
+import ExportModal from "./ExportModal";
 const screenWidth = Dimensions.get("window").width;
 
 export default function ReportScreen() {
-  const gastosCategoria = [
-    {
-      name: "Alimentação",
-      value: 450,
-      color: "#ef4444",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
-    },
-    {
-      name: "Transporte",
-      value: 280,
-      color: "#3b82f6",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
-    },
-    {
-      name: "Moradia",
-      value: 700,
-      color: "#f59e0b",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
-    },
-    {
-      name: "Lazer",
-      value: 190,
-      color: "#8b5cf6",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
-    },
-  ];
+  const [metaMensal, setMetaMensal] = useState(0);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [receitas, setReceitas] = useState(0);
+  const [despesas, setDespesas] = useState(0);
+  const [economia, setEconomia] = useState(0);
+  const [gastosCategoria, setGastosCategoria] = useState<any[]>([]);
 
-  const gastosPagamento = [
+  const [evolucaoData, setEvolucaoData] = useState({
+  labels: [] as string[],
+  datasets: [
     {
-      name: "Débito",
-      value: 620,
-      color: "#10b981",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
+      data: [0],
+      color: () => "#3B82F6",
+      strokeWidth: 2,
     },
-    {
-      name: "Crédito",
-      value: 540,
-      color: "#3b82f6",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
-    },
-    {
-      name: "Dinheiro",
-      value: 260,
-      color: "#f59e0b",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
-    },
-    {
-      name: "PIX",
-      value: 200,
-      color: "#8b5cf6",
-      legendFontColor: "#4b5563",
-      legendFontSize: 9,
-    },
-  ];
+  ],
+});
 
-  const evolucaoData = {
-    labels: ["1", "2", "3", "4", "5", "6", "7"],
-    datasets: [
-      {
-        data: [500, 800, 600, 1000, 900, 1100, 950],
-        color: () => "#3b82f6",
-        strokeWidth: 2,
+const chartConfig = {
+  backgroundGradientFrom: "#ffffff",
+  backgroundGradientTo: "#ffffff",
+  decimalPlaces: 0,
+  color: () => "#3B82F6",
+  labelColor: () => "#6b7280",
+
+  fillShadowGradient: "#3B82F6",
+  fillShadowGradientOpacity: 0.15,
+
+  propsForDots: {
+    r: "3",
+    strokeWidth: "1",
+    stroke: "#3B82F6",
+  },
+};
+
+async function carregarResumo() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await api.get("/transacoes", {
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-    ],
-  };
+    });
 
-  const chartConfig = {
-    backgroundGradientFrom: "#ffffff",
-    backgroundGradientTo: "#ffffff",
-    decimalPlaces: 0,
-    color: () => "#3b82f6",
-    labelColor: () => "#6b7280",
-    propsForDots: {
-      r: "3",
-      strokeWidth: "1",
-      stroke: "#3b82f6",
+    let totalReceitas = 0;
+    let totalDespesas = 0;
+    const categorias: any = {};
+    let saldo = 0;
+    const saldoAcumulado: number[] = [];
+
+    response.data.transações.forEach((item: any) => {
+      const valor = parseFloat(
+         String(item.valor).replace(",", ".")
+        );
+        saldo += valor;saldoAcumulado.push(saldo);
+  if (valor >= 0) {
+    totalReceitas += valor;
+  } else {
+    totalDespesas += Math.abs(valor);
+    const categoria = item.categoria || "Outros";
+    categorias[categoria] =
+      (categorias[categoria] || 0) +
+      Math.abs(valor);
+  }
+
+});
+
+    setReceitas(totalReceitas);
+    setDespesas(totalDespesas);
+    setEconomia(totalReceitas - totalDespesas);
+    const cores = ["#EF4444","#3B82F6","#F59E0B","#8B5CF6","#10B981","#EC4899","#06B6D4","#84CC16",];
+
+const dadosCategoria = Object.keys(categorias).map(
+  (categoria, index) => ({
+    name: categoria,
+    value: categorias[categoria],
+    color: cores[index % cores.length],
+    legendFontColor: "#4B5563",
+    legendFontSize: 9,
+  })
+);
+
+setGastosCategoria(dadosCategoria);
+setEvolucaoData({
+  labels: saldoAcumulado.map((_, index) => `${index + 1}`),
+  datasets: [
+    {
+      data: saldoAcumulado.length ? saldoAcumulado : [0],
+      color: () => "#3B82F6",
+      strokeWidth: 2,
     },
-    propsForBackgroundLines: {
-      strokeWidth: 0,
-    },
-  };
+  ],
+});
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function carregarMeta() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await api.get("/metas", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.data.metas.length > 0) {
+      const valor = parseFloat(
+        response.data.metas[0].valor.replace(",", ".")
+      );
+
+      setMetaMensal(valor);
+    } else {
+      setMetaMensal(0);
+    }
+
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function verificarPremium() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await api.get("/usuario", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log(response.data);
+
+    setIsPremium(Boolean(response.data.premium));
+
+  } catch (error) {
+    console.log(error);
+  }
+}
+useEffect(() => {
+  verificarPremium();
+  carregarResumo();
+  carregarMeta();
+}, []);
+
+async function gerarRelatorio() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await api.get("/relatorios", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "text",
+    });
+
+    const caminhoArquivo =
+      FileSystem.documentDirectory + "relatorio.csv";
+
+    await FileSystem.writeAsStringAsync(
+      caminhoArquivo,
+      response.data,
+      {
+        encoding: FileSystem.EncodingType.UTF8,
+      }
+    );
+
+    const disponivel = await Sharing.isAvailableAsync();
+
+    if (disponivel) {
+      await Sharing.shareAsync(caminhoArquivo, {
+        mimeType: "text/csv",
+        dialogTitle: "Compartilhar relatório",
+      });
+    } else {
+      Alert.alert(
+        "Sucesso",
+        "Relatório salvo em:\n" + caminhoArquivo
+      );
+    }
+
+  } catch (error: any) {
+    console.log(error);
+
+    if (error.response?.status === 403) {
+      setShowPremium(true);
+      return;
+    }
+
+    Alert.alert(
+      "Erro",
+      "Não foi possível gerar o relatório."
+    );
+  }
+}
+
+function formatarValor(valor: number) {
+  return valor.toFixed(2).replace(".", ",");
+}
 
   return (
     <View style={styles.container}>
@@ -109,15 +237,53 @@ export default function ReportScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+    <TouchableOpacity
+     activeOpacity={0.9}
+     style={styles.premiumBanner}
+    >
+    <View style={styles.premiumContent}>
+
+    <View style={styles.crownContainer}>
+      <Crown color="#FFD54F" size={20} />
+    </View>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.premiumTitle}>
+        PREMIUM
+      </Text>
+      <Text style={styles.premiumSubtitle}>
+        {isPremium
+          ? "Exportar relatório em arquivo CSV"
+          : "Assine o Premium para exportar relatórios CSV"}
+      </Text>
+    </View>
+     <TouchableOpacity
+      activeOpacity={0.8}
+      style={styles.csvButton}
+      onPress={() => {
+        if (isPremium) {
+          gerarRelatorio();
+        } else {
+          setShowPremium(true);
+        }
+      }}
+     >
+      <FileDown size={16} color="#1E3A5F" />
+      <Text style={styles.csvText}>
+        {isPremium ? "CSV" : "ASSINAR"}
+      </Text>
+     </TouchableOpacity>
+    </View>
+   </TouchableOpacity>
+
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.receitasLabel}>RECEITAS</Text>
-            <Text style={styles.summaryValue}>R$ 2.000,00</Text>
+            <Text style={styles.summaryValue}>R$ {formatarValor(receitas)}</Text>
           </View>
 
           <View style={styles.summaryCard}>
             <Text style={styles.despesasLabel}>DESPESAS</Text>
-            <Text style={styles.summaryValue}>R$ 1620,00</Text>
+            <Text style={styles.summaryValue}>R$ {formatarValor(despesas)}</Text>
           </View>
         </View>
 
@@ -153,90 +319,47 @@ export default function ReportScreen() {
             </View>
           </View>
 
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>GASTOS POR FORMA DE PAGAMENTO</Text>
-
-            <PieChart
-              data={gastosPagamento}
-              width={(screenWidth - 48) / 2}
-              height={105}
-              chartConfig={chartConfig}
-              accessor="value"
-              backgroundColor="transparent"
-              paddingLeft="0"
-              center={[15, 0]}
-              absolute={false}
-              hasLegend={false}
-            />
-
-            <View style={styles.legendContainer}>
-              {gastosPagamento.map((item, index) => (
-                <View key={index} style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendColor,
-                      { backgroundColor: item.color },
-                    ]}
-                  />
-                  <Text style={styles.legendText}>{item.name}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
         </View>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>
-            DESPESAS ESSENCIAIS VS NÃO ESSENCIAIS
-          </Text>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.essentialValue}>R$ 950,00</Text>
-              <Text style={styles.infoDescription}>Essenciais</Text>
-            </View>
-
-            <View style={styles.infoItem}>
-              <Text style={styles.nonEssentialValue}>R$ 670,00</Text>
-              <Text style={styles.infoDescription}>Não Essenciais</Text>
-            </View>
-          </View>
-        </View>
-
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>ECONOMIA</Text>
 
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <Text style={styles.goalValue}>R$ 500,00</Text>
+              <Text style={styles.goalValue}>R$ {formatarValor(metaMensal)}</Text>
               <Text style={styles.infoDescription}>Meta Mensal</Text>
             </View>
 
             <View style={styles.infoItem}>
-              <Text style={styles.currentSavingValue}>R$ 380,00</Text>
+              <Text style={styles.currentSavingValue}>R$ {formatarValor(economia)}</Text>
               <Text style={styles.infoDescription}>Economia Atual</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.lineChartCard}>
-          <Text style={styles.infoTitle}>EVOLUÇÃO DOS GASTOS</Text>
-
-          <LineChart
-            data={evolucaoData}
-            width={screenWidth - 56}
-            height={150}
-            chartConfig={chartConfig}
-            bezier
-            withInnerLines={false}
-            withOuterLines={false}
-            withVerticalLabels={false}
-            withHorizontalLabels={false}
-            style={styles.lineChart}
-          />
-        </View>
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}> EVOLUÇÃO DO SALDO</Text>
+  <LineChart
+    data={evolucaoData}
+    width={screenWidth - 60}
+    height={180}
+    chartConfig={chartConfig}
+    bezier
+    withInnerLines={false}
+    withOuterLines={false}
+    style={{
+      borderRadius: 12,
+    }}
+  />
+</View>
       </ScrollView>
-    </View>
+      <PremiumModal
+      visible={showPremium}
+      onClose={() => setShowPremium(false)}/>
+      <ExportModal
+        visible={showExportModal}
+        onClose={() => setShowExportModal(false)}
+      />
+      </View>
   );
 }
 
@@ -398,18 +521,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  essentialValue: {
-    color: "#ef4444",
-    fontSize: 15,
-    fontWeight: "800",
-  },
-
-  nonEssentialValue: {
-    color: "#3b82f6",
-    fontSize: 15,
-    fontWeight: "800",
-  },
-
   goalValue: {
     color: "#3b82f6",
     fontSize: 15,
@@ -428,18 +539,59 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
-  lineChartCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    overflow: "hidden",
-    ...cardShadow,
-  },
-
   lineChart: {
     marginLeft: -18,
     marginTop: -8,
   },
+  premiumBanner: {
+  marginBottom: 14,
+  borderRadius: 16,
+  backgroundColor: "#2E4F87",
+  overflow: "hidden",
+  elevation: 4,
+},
+
+premiumContent: {
+  flexDirection: "row",
+  alignItems: "center",
+  padding: 14,
+},
+
+crownContainer: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: "#FFD54F",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 12,
+},
+
+premiumTitle: {
+  color: "#FFD54F",
+  fontWeight: "800",
+  fontSize: 12,
+},
+
+premiumSubtitle: {
+  color: "#FFF",
+  fontSize: 11,
+  marginTop: 2,
+},
+
+csvButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#FFC107",
+  borderRadius: 10,
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+},
+
+csvText: {
+  color: "#1E3A5F",
+  fontWeight: "800",
+  marginLeft: 5,
+},
 });

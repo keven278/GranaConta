@@ -1,3 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
+import { Alert } from "react-native";
 import { useState } from "react";
 import {
   ScrollView,
@@ -18,8 +21,8 @@ export default function AddTransactionScreen({
   const [type, setType] = useState<"expense" | "income">("expense");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedPayment, setSelectedPayment] = useState("");
+  const [descricao, setDescricao] = useState("");
   const [value, setValue] = useState("0,00");
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const categories = [
     "Alimentação",
@@ -39,17 +42,90 @@ export default function AddTransactionScreen({
 
   const paymentMethods = ["Débito", "Crédito", "Dinheiro", "PIX"];
   const handleValueChange = (text: string) => {
-    const onlyNumbers = text.replace(/\D/g, "");
+  const onlyNumbers = text.replace(/\D/g, "");
 
-    const number = Number(onlyNumbers) / 100;
+  console.log("Digitado:", text);
+  console.log("Somente números:", onlyNumbers);
 
-    const formatted = number.toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const number = Number(onlyNumbers) / 100;
 
-    setValue(formatted);
-  };
+  console.log("Número:", number);
+
+  const formatted = number.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  console.log("Formatado:", formatted);
+
+  setValue(formatted);
+};
+  async function salvarTransacao() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    if (!token) {
+      Alert.alert(
+        "Sessão expirada",
+        "Faça login novamente.");
+        return;
+    }
+
+    const hoje = new Date().toISOString().split("T")[0];
+
+    if (!descricao.trim()) {
+  Alert.alert("Erro", "Informe a descrição.");
+  return;}
+
+    if (!selectedCategory) {
+  Alert.alert("Erro", "Selecione uma categoria.");
+  return;}
+
+    if (!selectedPayment) {
+  Alert.alert("Erro", "Selecione a forma de pagamento.");
+  return;}
+
+    if (value === "0,00") {
+  Alert.alert("Erro", "Informe um valor válido.");
+  return;}
+
+await api.post(
+  "/transacoes",
+  {
+    nome: descricao,
+    valor:type === "expense"
+    ? `-${value}`
+    : value,
+    categoria: selectedCategory,
+    data: hoje,
+  },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    Alert.alert(
+      "Sucesso",
+      "Transação cadastrada com sucesso!"
+    );
+    setDescricao("");
+    setSelectedCategory("");
+    setSelectedPayment("");
+    setValue("0,00");
+    setType("expense");
+
+    onBack();
+
+  } catch (error) {
+    console.error(error);
+
+    Alert.alert(
+      "Erro",
+      "Não foi possível salvar a transação."
+    );
+  }
+}
 
   return (
     <View style={styles.container}>
@@ -119,10 +195,12 @@ export default function AddTransactionScreen({
         <Text style={styles.label}>Descrição</Text>
 
         <TextInput
-          placeholder="Ex: Almoço, Uber, Netflix..."
-          style={styles.input}
-          placeholderTextColor="#9CA3AF"
-        />
+        value={descricao}
+        onChangeText={setDescricao}
+        placeholder="Ex: Almoço, Uber, Netflix..."
+       style={styles.input}
+       placeholderTextColor="#9CA3AF"
+       />
 
         <Text style={styles.label}>Categoria</Text>
 
@@ -173,26 +251,12 @@ export default function AddTransactionScreen({
         </View>
 
         <TouchableOpacity
-          style={styles.saveButton}
-          onPress={() => {
-            setShowSuccess(true);
-
-            setTimeout(() => {
-              setShowSuccess(false);
-            }, 3000);
-          }}
+        style={styles.saveButton}
+        onPress={salvarTransacao}
         >
           <Text style={styles.saveButtonText}>SALVAR LANÇAMENTO</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {showSuccess && (
-        <View style={styles.successPopup}>
-          <Text style={styles.successText}>
-            ✓ Lançamento salvo com sucesso!
-          </Text>
-        </View>
-      )}
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +14,7 @@ import {
 } from "react-native";
 
 import logoImg from "../imports/logo.png";
+import api from "../services/api";
 
 function formatarMoeda(valor: string) {
   const somenteNumeros = valor.replace(/\D/g, "");
@@ -39,15 +41,68 @@ export default function SignupScreen({
   const [senha, setSenha] = useState("");
   const [rendaMensal, setRendaMensal] = useState("R$ 0,00");
 
-  function handleCadastro() {
-    console.log("Nome:", nome);
-    console.log("Email:", email);
-    console.log("Senha:", senha);
-    const renda = Number(rendaMensal.replace("R$", "").replace(/\./g, "").replace(",", ".").trim());
-    console.log("Renda mensal:", renda);
+async function handleCadastro() {
 
-    onSignupSuccess?.();
+  if (!nome || !email || !senha) {
+    Alert.alert("Erro", "Preencha todos os campos.");
+    return;
   }
+
+  try {
+    const renda = Number(
+      rendaMensal
+        .replace("R$", "")
+        .replace(/\./g, "")
+        .replace(",", ".")
+        .trim()
+    );
+    if (renda <= 0) {
+      Alert.alert("Erro", "Informe uma renda mensal válida.");
+      return;
+    }
+
+    const response = await api.post("/usuarios", {
+      nome,
+      email,
+      senha,
+      rendaMensal: renda,
+    });
+
+    console.log(response.data);
+
+setNome("");
+setEmail("");
+setSenha("");
+setRendaMensal("R$ 0,00");
+
+Alert.alert(
+  "Sucesso",
+  "Cadastro realizado com sucesso!",
+  [
+    {
+      text: "OK",
+      onPress: () => onNavigateToLogin?.(),
+    },
+  ]
+);
+
+  } catch (error: any) {
+
+    if (error.response) {
+      Alert.alert(
+        "Erro",
+        error.response.data.erro
+      );
+    } else {
+      Alert.alert(
+        "Erro",
+        "Não foi possível conectar ao servidor."
+      );
+    }
+
+    console.log(error);
+  }
+}
 
   return (
     <View style={styles.container}>

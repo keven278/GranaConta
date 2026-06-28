@@ -1,11 +1,16 @@
-import { useState } from "react";
-
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
+import { Alert } from "react-native";
+import EditGoalModal from "./EditGoalModal";
+import ConfirmDeleteGoalModal from "./ConfirmDeleteGoalModal";
 import {
   Car,
   CheckSquare,
   GraduationCap,
   Home,
   Laptop,
+  MoreVertical,
   Plane,
   Plus,
   Shield,
@@ -19,6 +24,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 
 interface GoalsScreenProps {
@@ -26,55 +32,15 @@ interface GoalsScreenProps {
   onOpenProfile?: () => void;
 }
 
-export default function GoalsScreen({
+export default function GoalsScreen({ 
   onOpenAddGoal,
   onOpenProfile,
 }: GoalsScreenProps) {
-  const [metas, setMetas] = useState([
-    {
-      nome: "Viagem internacional",
-      valor: 5000,
-      concluida: false,
-      icon: Plane,
-      color: "#3b82f6",
-    },
-    {
-      nome: "Comprar um carro",
-      valor: 30000,
-      concluida: true,
-      icon: Car,
-      color: "#10b981",
-    },
-    {
-      nome: "Dar entrada na casa própria",
-      valor: 50000,
-      concluida: false,
-      icon: Home,
-      color: "#8b5cf6",
-    },
-    {
-      nome: "Trocar de notebook",
-      valor: 4000,
-      concluida: true,
-      icon: Laptop,
-      color: "#f59e0b",
-    },
-    {
-      nome: "Fundo para estudos",
-      valor: 10000,
-      concluida: false,
-      icon: GraduationCap,
-      color: "#3b82f6",
-    },
-    {
-      nome: "Reserva de emergência",
-      valor: 15000,
-      concluida: false,
-      icon: Shield,
-      color: "#ef4444",
-    },
-  ]);
-
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [showEditGoal, setShowEditGoal] = useState(false);
+  const [showDeleteGoal, setShowDeleteGoal] = useState(false);
+  const [metas, setMetas] = useState<any[]>([]);
   const totalMetas = metas.length;
   const metasConcluidas = metas.filter((meta) => meta.concluida).length;
   const percentualConcluido =
@@ -90,6 +56,119 @@ export default function GoalsScreen({
     return valor.toLocaleString("pt-BR");
   }
 
+ async function carregarMetas() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await api.get("/metas", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("RESPOSTA DA API:", response.data);
+    console.log(response.data.metas);
+
+    const listaMetas = response.data.metas || response.data;
+
+    const metasFormatadas = listaMetas.map((meta: any) => ({
+      ...meta,
+      concluida: false,
+      icon: Plane,
+      color: "#3b82f6",
+    }));
+
+    setMetas(metasFormatadas);
+
+  } catch (error: any) {
+    console.log("ERRO:", error);
+    console.log("STATUS:", error.response?.status);
+    console.log("DADOS:", error.response?.data);
+
+    Alert.alert(
+      "Erro",
+      error.response?.data?.erro || "Erro ao carregar metas."
+    );
+  }
+}
+useEffect(() => {
+  carregarMetas();
+}, []);
+
+async function editarMeta(meta: any) {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    await api.put(
+      `/metas/${meta.id}`,
+      {
+        nome: meta.nome,
+        valor: String(meta.valor).replace(/\./g, "").replace(",", "."),
+        adicionar: "0,00",
+        subtrair: "0,00",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setShowEditGoal(false);
+    setSelectedGoal(null);
+    setMenuVisible(false);
+
+    carregarMetas();
+
+    Alert.alert("Sucesso", "Meta atualizada com sucesso!");
+
+  } catch (error: any) {
+    console.log(error);
+
+    Alert.alert(
+      "Erro",
+      error.response?.data?.erro ??
+      "Erro ao editar a meta."
+    );
+  }
+}
+
+async function excluirMeta() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    await api.delete(
+      `/metas/${selectedGoal.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setShowDeleteGoal(false);
+    setSelectedGoal(null);
+    setMenuVisible(false);
+
+    carregarMetas();
+
+    Alert.alert(
+      "Sucesso",
+      "Meta excluída com sucesso!"
+    );
+
+  } catch (error: any) {
+
+    console.log(error);
+
+    Alert.alert(
+      "Erro",
+      error.response?.data?.erro ??
+      "Erro ao excluir meta."
+    );
+  }
+}
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -97,7 +176,7 @@ export default function GoalsScreen({
 
         <Text style={styles.headerTitle}>METAS</Text>
 
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity activeOpacity={0.7}onPress={onOpenProfile}>
           <UserCircle2 size={26} color="#ffffff" />
         </TouchableOpacity>
       </View>
@@ -159,26 +238,103 @@ export default function GoalsScreen({
                   <Icon size={20} color={meta.color} />
                 </View>
 
-                <View style={styles.goalInfo}>
-                  <Text
-                    style={[
-                      styles.goalName,
-                      meta.concluida && styles.goalNameCompleted,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {meta.nome}
-                  </Text>
+<View style={styles.goalInfo}>
+  <Text
+    style={[
+      styles.goalName,
+      meta.concluida && styles.goalNameCompleted,
+    ]}
+    numberOfLines={1}
+  >
+    {meta.nome}
+  </Text>
 
-                  <Text style={styles.goalValue}>
-                    R$ {formatarValor(meta.valor)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+  <Text style={styles.goalValue}>
+   R$ {formatarValor( parseFloat(String(meta.valor).replace(",", ".")))}
+  </Text>
+</View>
+
+<TouchableOpacity
+  onPress={() => {
+    setSelectedGoal(meta);
+    setMenuVisible(true);
+  }}
+>
+  <MoreVertical size={22} color="#6B7280" />
+</TouchableOpacity>
+
+    </TouchableOpacity>
             );
           })}
         </ScrollView>
-        
+
+        <Modal
+  visible={menuVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setMenuVisible(false)}
+>
+  <TouchableOpacity
+    style={{
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.25)",
+      justifyContent: "center",
+      alignItems: "center",
+    }}
+    activeOpacity={1}
+    onPress={() => setMenuVisible(false)}
+  >
+    <View
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        width: 220,
+        paddingVertical: 8,
+      }}
+    >
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={() => {
+          setMenuVisible(false);
+          setShowEditGoal(true);
+        }}
+      >
+        <Text style={styles.menuText}>
+          ✏️ Editar Meta
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={() => {
+          setMenuVisible(false);
+          setShowDeleteGoal(true);
+        }}
+      >
+        <Text style={styles.deleteText}>
+          🗑 Excluir Meta
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </TouchableOpacity>
+</Modal>
+<EditGoalModal
+  visible={showEditGoal}
+  goal={selectedGoal}
+  onClose={() => setShowEditGoal(false)}
+  onSave={editarMeta}
+  onDelete={() => {
+    setShowEditGoal(false);
+    setShowDeleteGoal(true);
+  }}
+/>
+
+<ConfirmDeleteGoalModal
+  visible={showDeleteGoal}
+  goal={selectedGoal}
+  onCancel={() => setShowDeleteGoal(false)}
+  onDelete={excluirMeta}
+/>
         <TouchableOpacity
         activeOpacity={0.8}
         style={styles.addGoalButton}
@@ -364,4 +520,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
   },
+  menuButton: {
+  padding: 4,
+  marginLeft: 8,
+},
+menu: {
+  position: "absolute",
+  right: 8,
+  top: 50,
+  backgroundColor: "#FFF",
+  borderRadius: 10,
+  elevation: 6,
+  shadowColor: "#000",
+  shadowOpacity: 0.15,
+  shadowRadius: 6,
+  paddingVertical: 6,
+  minWidth: 150,
+  zIndex: 999,
+},
+
+menuItem: {
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+},
+
+menuText: {
+  color: "#374151",
+  fontWeight: "600",
+},
+
+deleteText: {
+  color: "#EF4444",
+  fontWeight: "600",
+},
 });

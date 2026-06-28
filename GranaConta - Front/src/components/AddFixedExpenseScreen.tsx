@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
+import { Alert } from "react-native";
 import {
   View,
   Text,
@@ -17,6 +20,8 @@ export default function AddFixedExpenseScreen({
 }: AddFixedExpenseScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [nome, setNome] = useState("");
+  const [valor, setValor] = useState("");
 
   const categories = [
     'Moradia',
@@ -35,6 +40,62 @@ export default function AddFixedExpenseScreen({
   ];
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  async function salvarGastoFixo() {
+  try {
+    if (!nome.trim()) {
+      Alert.alert("Erro", "Informe o nome.");
+      return;
+    }
+
+    if (!valor.trim()) {
+      Alert.alert("Erro", "Informe o valor.");
+      return;
+    }
+
+    if (!selectedDay) {
+      Alert.alert("Erro", "Selecione o dia.");
+      return;
+    }
+
+    const token = await AsyncStorage.getItem("token");
+
+    await api.post(
+      "/transacoes/fixas",
+      {
+        nome,
+        valor,
+        categoria: "Despesa fixa",
+        data: selectedDay.toString(),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    Alert.alert(
+      "Sucesso",
+      "Gasto fixo cadastrado!",
+      [
+        {
+          text: "OK",
+          onPress: onBack,
+        },
+      ]
+    );
+
+  } catch (error: any) {
+    console.log(error.response?.data);
+
+    Alert.alert(
+      "Erro",
+      error.response?.data?.erro ??
+      "Erro ao cadastrar gasto fixo."
+    );
+  }
+}
 
   return (
     <View style={styles.container}>
@@ -56,19 +117,23 @@ export default function AddFixedExpenseScreen({
       >
         <Text style={styles.label}>Nome do gasto</Text>
 
-        <TextInput
-          placeholder="Ex: Aluguel, Academia, Netflix"
-          style={styles.input}
-          placeholderTextColor="#9CA3AF"
-        />
+       <TextInput
+       value={nome}
+       onChangeText={setNome}
+       placeholder="Ex: Aluguel, Academia, Netflix"
+       style={styles.input}
+       placeholderTextColor="#9CA3AF"
+       />
 
         <Text style={styles.label}>Valor mensal</Text>
 
         <TextInput
-          placeholder="R$ 0,00"
-          keyboardType="numeric"
-          style={styles.input}
-          placeholderTextColor="#9CA3AF"
+        value={valor}
+        onChangeText={setValor}
+        placeholder="R$ 0,00"
+        keyboardType="numeric"
+        style={styles.input}
+        placeholderTextColor="#9CA3AF"
         />
 
         <Text style={styles.label}>Categoria</Text>
@@ -123,7 +188,7 @@ export default function AddFixedExpenseScreen({
           ))}
         </View>
 
-        <TouchableOpacity style={styles.saveButton}>
+        <TouchableOpacity style={styles.saveButton}onPress={salvarGastoFixo}>
           <Text style={styles.saveButtonText}>
             SALVAR GASTO FIXO
           </Text>
